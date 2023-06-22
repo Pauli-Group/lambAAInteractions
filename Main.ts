@@ -173,4 +173,12 @@ program
         saveAccount(account)
     })
 
+program
+    .command('auto-clean')
+    .description('Ensure all pkhs which are marked safe to use are still safe to use. Mark all unsafe pkhs as unsafe (we will save a list of potytentually unsafe pkhs as we go)')
+    .argument('<string>', 'Account Name')
+    .action(async (_accountName) => {
+
+    })
+
 program.parse(process.argv)
