@@ -1,0 +1,1 @@
+npx tsc ; node lib/Main.js create-account sepolia william
