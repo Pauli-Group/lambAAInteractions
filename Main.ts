@@ -23,6 +23,9 @@ import submitUserOperationViaBundler from './submitUserOperationViaBundler'
 import EntryPointJSON from './contracts/EntryPoint.json'
 import getDeposit from './getDeposit'
 import createAccount from './createAccount'
+import sendEth from './sendEth'
+import deposit from './deposit'
+import addKeys from './addKeys'
 
 const program = new Command()
 
@@ -38,76 +41,7 @@ program
     .description('Deposit funds into the entry point to continute paying the prefund')
     .argument('<string>', 'Account Name')
     .argument('<string>', 'Amount')
-    .action(async (_accountName, amount) => {
-
-        const account = await loadAccount(_accountName.toLowerCase())
-        const initCode = await getInitCode(account);
-        const depositBefore = await getDeposit(account.counterfactual, account.chainName)
-        console.log(`Deposit before: ${depositBefore}`)
-        const depositAsEther = ethers.utils.formatEther(depositBefore)
-        console.log(`Deposit before (ether): ${depositAsEther}`)
-
-        const callData = accountInterface.encodeFunctionData('execute', [
-            ENTRYPOINT,
-            amount,
-            '0x'
-        ])
-
-        const userOp = Monad.of({
-            sender: account.counterfactual,
-            initCode: initCode,
-            callData: callData,
-            nonce: await getNonce(account),
-        })
-            .bind(fillUserOpDefaults)
-            .bind((uo: any) => lamportSignUserOp(
-                uo,
-                ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
-                ENTRYPOINT,
-                account.network,
-                account.keys
-            ))
-
-        await submitUserOperationViaBundler(userOp.unwrap(), account)
-        saveAccount(account)
-    })
-
-
-const sendEth = async (_accountName: string, toAddress: string, amount: string) => {
-    const account = await loadAccount(_accountName.toLowerCase())
-    const initCode = await getInitCode(account);
-
-    if ((initCode !== '0x') && (toAddress !== ENTRYPOINT)) {
-        console.error(`First Transaction must pay prefund by sending eth to ${ENTRYPOINT}`)
-        process.exit(1)
-    }
-
-    const callData = accountInterface.encodeFunctionData('execute', [
-        toAddress,
-        amount,
-        '0x'
-    ])
-
-    const userOp = Monad.of({
-        sender: account.counterfactual,
-        initCode: initCode,
-        callData: callData,
-        nonce: await getNonce(account),
-    })
-        .bind(fillUserOpDefaults)
-        .bind((uo: any) => lamportSignUserOp(
-            uo,
-            ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
-            ENTRYPOINT,
-            account.network,
-            account.keys
-        ))
-        .bind(show)
-
-    await submitUserOperationViaBundler(userOp.unwrap(), account)
-    saveAccount(account)
-}
-
+    .action(deposit)
 
 program
     .command('send-eth')
@@ -121,41 +55,7 @@ program
     .command('add-keys')
     .description('Add keys to an account')
     .argument('<string>', 'Account Name')
-    .action(async (_accountName) => {
-        const account = await loadAccount(_accountName.toLowerCase())
-        const initCode = await getInitCode(account);
-
-        if (initCode !== '0x') {
-            console.error(`First Transaction must pay prefund by sending eth to ${ENTRYPOINT}`)
-            process.exit(1)
-        }
-
-        const additionalKeys = account.keys.more(30)
-        const additionalKeyHashes = additionalKeys.map(k => k.pkh)
-
-        const callData = accountInterface.encodeFunctionData('addPublicKeyHashes', [
-            additionalKeyHashes
-        ])
-
-        const userOp = Monad.of({
-            sender: account.counterfactual,
-            initCode: initCode,
-            callData: callData,
-            nonce: await getNonce(account),
-            callGasLimit: 10_000_000
-        })
-            .bind(fillUserOpDefaults)
-            .bind((uo: any) => lamportSignUserOp(
-                uo,
-                ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
-                ENTRYPOINT,
-                account.network,
-                account.keys
-            ))
-
-        await submitUserOperationViaBundler(userOp.unwrap(), account)
-        saveAccount(account)
-    })
+    .action(addKeys)
 
 program
     .command('auto-clean')

@@ -1,25 +1,26 @@
 import { ethers } from "ethers";
 import ENTRYPOINT from "./EntryPoint";
-import Monad from "./Monad";
-import { fillUserOpDefaults, lamportSignUserOp, show } from "./UserOperation";
-import accountInterface from "./accountInterface";
-import getInitCode from "./getInitCode";
-import getNonce from "./getNonce";
-import { loadAccount } from "./loaders";
-import submitUserOperationViaBundler from "./submitUserOperationViaBundler";
 import saveAccount from "./saveAccount";
+import submitUserOperationViaBundler from "./submitUserOperationViaBundler";
+import { fillUserOpDefaults, lamportSignUserOp } from "./UserOperation";
+import getNonce from "./getNonce";
+import Monad from "./Monad";
+import accountInterface from "./accountInterface";
+import getDeposit from "./getDeposit";
+import getInitCode from "./getInitCode";
+import { loadAccount } from "./loaders";
 
-const sendEth = async (_accountName: string, toAddress: string, amount: string) => {
+const deposit = async (_accountName: string, amount: string) => {
+
     const account = await loadAccount(_accountName.toLowerCase())
     const initCode = await getInitCode(account);
-
-    if ((initCode !== '0x') && (toAddress !== ENTRYPOINT)) {
-        console.error(`First Transaction must pay prefund by sending eth to ${ENTRYPOINT}`)
-        process.exit(1)
-    }
+    const depositBefore = await getDeposit(account.counterfactual, account.chainName)
+    console.log(`Deposit before: ${depositBefore}`)
+    const depositAsEther = ethers.utils.formatEther(depositBefore)
+    console.log(`Deposit before (ether): ${depositAsEther}`)
 
     const callData = accountInterface.encodeFunctionData('execute', [
-        toAddress,
+        ENTRYPOINT,
         amount,
         '0x'
     ])
@@ -38,10 +39,9 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
             account.network,
             account.keys
         ))
-        .bind(show)
 
     await submitUserOperationViaBundler(userOp.unwrap(), account)
     saveAccount(account)
 }
 
-export default sendEth
+export default deposit
