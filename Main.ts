@@ -26,6 +26,8 @@ import createAccount from './createAccount'
 import sendEth from './sendEth'
 import deposit from './deposit'
 import addKeys from './addKeys'
+import showAccount from './showAccount'
+import sendEthAsync from './sendEthAsync'
 
 const program = new Command()
 
@@ -61,35 +63,16 @@ program
     .command('show')
     .description('Show an account')
     .argument('<string>', 'Account Name')
-    .action(async (_accountName) => {
-        const account = await loadAccount(_accountName.toLowerCase())
-        const [normalProvider, bundlerProvider] = loadProviders(account.chainName)
-        const accountContract = new ethers.Contract(account.counterfactual, accountInterface, normalProvider)
+    .action(showAccount)
 
-        const balance = await normalProvider.getBalance(account.counterfactual)
-        const deposit = await getDeposit(account.counterfactual, account.chainName)
 
-        const entryPointAddress = await accountContract.entryPoint().catch(() => 'Not Deployed')
-
-        const code = await normalProvider.getCode(account.counterfactual)
-        const liveKeyCount = await accountContract.liveKeyCount().catch(() => 'Not Deployed')
-
-        const nonce = await getNonce(account)
-
-        const data = {
-            counterfactual: account.counterfactual,
-            balance: ethers.utils.formatEther(balance),
-            deposit: ethers.utils.formatEther(deposit),
-            'entry point': entryPointAddress,
-            deployed: code === '0x' ? 'No' : 'Yes',
-            'live key count': liveKeyCount === 'Not Deployed' ? liveKeyCount : liveKeyCount.toNumber(),
-            nonce: nonce
-
-        }
-
-        console.table(data)
-
-    })
+program
+    .command('send-eth-async')
+    .description('Send ETH to an account using pull payments')
+    .argument('<string>', 'Account Name')
+    .argument('<string>', 'To Address')
+    .argument('<string>', 'Amount')
+    .action(sendEthAsync)
 
 program
     .command('auto-clean')
