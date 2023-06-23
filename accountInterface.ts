@@ -10,7 +10,9 @@ const accountInterface: ethers.utils.Interface = new ethers.utils.Interface([
     "function endorseMessage(bytes32 message)",
     "function isValidSignature(bytes32 hash, bytes memory missing)",
     "function executeBatch(address[] calldata dest, bytes[] calldata func)",
-    "function nonce() returns (uint256)"
+    "function nonce() returns (uint256)",
+    "function entryPoint() view returns (address)",
+    'function liveKeyCount() view returns (uint256)',
 ])
 
 export default accountInterface
