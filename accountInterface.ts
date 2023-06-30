@@ -15,7 +15,8 @@ const accountInterface: ethers.utils.Interface = new ethers.utils.Interface([
     "function liveKeyCount() view returns (uint256)",
     "function initializePullPaymentsAndERC777Support()",
     "function executeBatchWithValue(address[] calldata dest, uint256[] calldata value,  bytes[] calldata func)",
-    "function endorseMerkleRoot(bytes32 merkleRoot)"
+    "function endorseMerkleRoot(bytes32 merkleRoot)",
+    "function initialize( address anOwner, bytes32[] memory firstLamportKeys)"
 ])
 
 export default accountInterface

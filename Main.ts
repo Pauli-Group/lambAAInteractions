@@ -84,7 +84,7 @@ program
     .argument('<string>', 'Deposit Amount')
     .action(async (_accountName, depositAmount) => {
         const oceKeyTracker = new KeyTrackerB()
-        const oceKeyCount = 32
+        const oceKeyCount = 256
         const oceKeys = oceKeyTracker.more(oceKeyCount)
 
         const ocePKHs = oceKeys
@@ -99,15 +99,22 @@ program
         }
         account.oceKeys.push(oceKeyTracker)
 
+        // generate more account keys
+
+        const additionalKeys = account.keys.more(30)
+        const additionalKeyHashes = additionalKeys.map(k => k.pkh)
+
         /*
             Calls:
                 1. deposit funds into the entry point
                 2. endorse merkle root for off chain signatures
-                3. call second initializer 
+                3. add more keys
+                4. call second initializer 
         */
         const callData = accountInterface.encodeFunctionData('executeBatchWithValue', [
             [
                 ENTRYPOINT,
+                account.counterfactual,
                 account.counterfactual,
                 account.counterfactual,
             ],
@@ -115,10 +122,12 @@ program
                 depositAmount,
                 0,
                 0,
+                0,
             ],
             [
                 '0x',
                 accountInterface.encodeFunctionData('endorseMerkleRoot', [tree.root]),
+                accountInterface.encodeFunctionData('addPublicKeyHashes', [additionalKeyHashes]),
                 accountInterface.encodeFunctionData('initializePullPaymentsAndERC777Support', []),
             ],
         ])

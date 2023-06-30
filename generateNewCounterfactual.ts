@@ -6,6 +6,7 @@ import { address } from "./SolidityTypes"
 import { Blockchain } from "./Blockchain"
 import { loadFactory, loadProviders } from "./loaders"
 import * as bip39 from 'bip39';
+import accountInterface from "./accountInterface"
 
 export default async function generateNewCounterfactual(blockchain: Blockchain, accountName: string): Promise<address> {
     const [normalProvider, bundlerProvider] = loadProviders(blockchain.name)
@@ -21,6 +22,22 @@ export default async function generateNewCounterfactual(blockchain: Blockchain, 
     const counterfactual = await factory.getAddress(ecdsaSigner.address, 0, initialKeyHashes)
 
     console.log(`Counterfactual address: ${counterfactual}`)
+
+    const accountImplementation = await factory.accountImplementation()
+
+    {   // generate the byte code needed to verify the proxy contract
+
+        const bytecode = ethers.utils.defaultAbiCoder.encode(['address', 'bytes'], [
+            accountImplementation, 
+            accountInterface.encodeFunctionData('initialize', [
+                ecdsaSigner.address,
+                initialKeyHashes,
+            ])
+        ])
+
+        console.log('Bytecode to verify proxy contract:', bytecode)
+
+    }
 
     saveCounterfactualOrigin(
         counterfactual,
