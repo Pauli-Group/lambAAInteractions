@@ -10,6 +10,18 @@ import sendEth from './sendEth'
 import { promises as fs } from 'fs';
 import path from 'path';
 import submitCalldata from './submitCalldata'
+import { loadAccount } from './loaders'
+import accountInterface from './accountInterface'
+import Monad from './Monad'
+import getNonce from './getNonce'
+import { fillUserOpDefaults, lamportSignUserOp } from './UserOperation'
+import { ethers } from 'ethers'
+import ENTRYPOINT from './EntryPoint'
+import submitUserOperationViaBundler from './submitUserOperationViaBundler'
+import saveAccount from './saveAccount'
+import getInitCode from './getInitCode'
+import KeyTrackerB from 'lamportwalletmanager/src/KeyTrackerB'
+import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
 
 const program = new Command()
 
@@ -63,6 +75,72 @@ program
     .action(async (_accountName, _calldataFile) => {
         const calldata = await fs.readFile(path.resolve(_calldataFile), 'utf8')
         await submitCalldata(_accountName, calldata)
+    })
+
+program
+    .command('finish-init')
+    .description('Finish the initialization of an account (adds support for ERC777 tokens and Eth Pull Payments)')
+    .argument('<string>', 'Account Name')
+    .argument('<string>', 'Deposit Amount')
+    .action(async (_accountName, depositAmount) => {
+        const oceKeyTracker = new KeyTrackerB()
+        const oceKeyCount = 32
+        const oceKeys = oceKeyTracker.more(oceKeyCount)
+
+        const ocePKHs = oceKeys
+            .map(k => k.pkh)
+            .map((pkh: string) => [pkh]) // StandardMerkleTree expects an array of arrays
+
+        const tree = StandardMerkleTree.of(ocePKHs, ["bytes32"])
+
+        const account = await loadAccount(_accountName.toLowerCase())
+        if (!account.oceKeys) {
+            account.oceKeys = []
+        }
+        account.oceKeys.push(oceKeyTracker)
+
+        /*
+            Calls:
+                1. deposit funds into the entry point
+                2. endorse merkle root for off chain signatures
+                3. call second initializer 
+        */
+        const callData = accountInterface.encodeFunctionData('executeBatchWithValue', [
+            [
+                ENTRYPOINT,
+                account.counterfactual,
+                account.counterfactual,
+            ],
+            [
+                depositAmount,
+                0,
+                0,
+            ],
+            [
+                '0x',
+                accountInterface.encodeFunctionData('endorseMerkleRoot', [tree.root]),
+                accountInterface.encodeFunctionData('initializePullPaymentsAndERC777Support', []),
+            ],
+        ])
+
+        const userOp = Monad.of({
+            sender: account.counterfactual,
+            initCode: await getInitCode(account),
+            callData: callData,
+            nonce: await getNonce(account),
+            callGasLimit: 10_000_000,
+        })
+            .bind(fillUserOpDefaults)
+            .bind((uo: any) => lamportSignUserOp(
+                uo,
+                ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
+                ENTRYPOINT,
+                account.network,
+                account.keys,
+            ))
+
+        await submitUserOperationViaBundler(userOp.unwrap(), account)
+        saveAccount(account)
     })
 
 program

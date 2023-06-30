@@ -38,7 +38,6 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
             account.network,
             account.keys
         ))
-        .bind(show)
 
     await submitUserOperationViaBundler(userOp.unwrap(), account)
     saveAccount(account)

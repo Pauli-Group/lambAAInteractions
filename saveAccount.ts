@@ -10,7 +10,8 @@ const saveAccount = async (account: Account) => saveCounterfactualOrigin(
     ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
     account.network,
     account.chainName,
-    account.accountName
+    account.accountName,
+    account.oceKeys || [],
 )
 
 export default saveAccount

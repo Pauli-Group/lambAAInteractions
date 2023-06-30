@@ -15,3 +15,6 @@ npx tsc ; node lib/Main.js add-keys will
 
 # create and submit a User Operation where `calldata` is provided by the file `calldata/senddemo`
 npx tsc ; node lib/Main.js execute will calldata/senddemo
+
+# deposit 0.1 eth for prefund
+npx tsc ; node lib/Main.js deposit will 100000000000000000

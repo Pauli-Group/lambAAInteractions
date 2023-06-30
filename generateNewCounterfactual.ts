@@ -7,9 +7,9 @@ import { Blockchain } from "./Blockchain"
 import { loadFactory, loadProviders } from "./loaders"
 import * as bip39 from 'bip39';
 
-export default async function generateNewCounterfactual(blockchain : Blockchain, accountName : string) : Promise<address> {
+export default async function generateNewCounterfactual(blockchain: Blockchain, accountName: string): Promise<address> {
     const [normalProvider, bundlerProvider] = loadProviders(blockchain.name)
-    
+
     let mnemonic: string = bip39.generateMnemonic(256);
     const ecdsaSigner = ethers.Wallet.fromMnemonic(mnemonic).connect(normalProvider)
 
@@ -30,7 +30,8 @@ export default async function generateNewCounterfactual(blockchain : Blockchain,
         ecdsaSigner,
         (await normalProvider.getNetwork()).chainId,
         blockchain.name,
-        accountName
+        accountName,
+        [],
     )
 
     return counterfactual

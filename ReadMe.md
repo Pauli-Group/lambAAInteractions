@@ -7,4 +7,3 @@ An alternatve is to deposit manually using etherscan and metamask. This method i
 ## TODO: 
 
 - [ ] Add 'of' method to lamportwalletmanager/Monad and replace our local definition of 'Monad' with the one defined in lamportwalletmanager
-- [ ] Make 'deposit' use 'sendEth' to reduce code duplication

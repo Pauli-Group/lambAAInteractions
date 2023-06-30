@@ -2,7 +2,7 @@ import { address } from "./SolidityTypes";
 import fs from 'fs'
 import KeyTrackerB from "lamportwalletmanager/src/KeyTrackerB";
 
-export default function saveCounterfactualOrigin(counterfactual : address, factoryAddress : address, keys : KeyTrackerB, initialKeyHashes : string[],  ecdsaSigner : any , chainId : number, chainName: string, accountName : string) {
+export default function saveCounterfactualOrigin(counterfactual : address, factoryAddress : address, keys : KeyTrackerB, initialKeyHashes : string[],  ecdsaSigner : any , chainId : number, chainName: string, accountName : string, oceKeys: KeyTrackerB[]) {
     const originFile = `accounts/${accountName}_${counterfactual}.json` // date first so its easier to sort.. counterfactual ddress for searching
     const originObject = {
         counterfactual: counterfactual,
@@ -16,6 +16,7 @@ export default function saveCounterfactualOrigin(counterfactual : address, facto
         ecdsaSecret: ecdsaSigner.mnemonic.phrase,
         ecdsaPath: ecdsaSigner.mnemonic.path,
         accountName: accountName,
+        oceKeys: oceKeys,
     }
 
     if (!fs.existsSync('accounts')) {

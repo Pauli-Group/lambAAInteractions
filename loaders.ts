@@ -73,9 +73,13 @@ export async function loadAccount(accountName: string): Promise<Account> {
 
     const kt = Object.assign(new KeyTrackerB(), JSON.parse(JSON.stringify(selectedAccount.keys))) as KeyTrackerB
 
+    const oceKeys = selectedAccount.oceKeys?.map((k: any) => Object.assign(new KeyTrackerB(), JSON.parse(JSON.stringify(k)))) as KeyTrackerB[]
+
+
     return {
         ...selectedAccount,
         keys: kt,
+        oceKeys: oceKeys
 
     } as Account
 }

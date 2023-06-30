@@ -44,7 +44,7 @@ export const DefaultsForUserOp: UserOperation = {
     signature: '0x'
 }
 
-export function fillUserOpDefaults(op: Partial<UserOperation>): Monad<UserOperation> {
+export function fillUserOpDefaults(op: Partial<UserOperation>): Monad<Partial<UserOperation>> {
     const defaults = DefaultsForUserOp
     const partial: any = { ...op }
     // we want "item:undefined" to be used from defaults, and not override defaults, so we must explicitly
@@ -56,7 +56,7 @@ export function fillUserOpDefaults(op: Partial<UserOperation>): Monad<UserOperat
         }
     }
     const filled = { ...defaults, ...partial }
-    return Monad.of(filled)
+    return Monad.of<Partial<UserOperation>>(filled)
 }
 
 export function packUserOp(op: UserOperation, forSignature = true): string {

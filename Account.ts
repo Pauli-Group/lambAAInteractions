@@ -13,4 +13,5 @@ export type Account = {
     signerAddress: address,
     network: number,
     accountName: string,
+    oceKeys: KeyTrackerB[] | null,
 }

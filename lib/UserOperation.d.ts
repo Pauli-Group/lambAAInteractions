@@ -16,7 +16,7 @@ export interface UserOperation {
     signature: bytes;
 }
 export declare const DefaultsForUserOp: UserOperation;
-export declare function fillUserOpDefaults(op: Partial<UserOperation>): Monad<UserOperation>;
+export declare function fillUserOpDefaults(op: Partial<UserOperation>): Monad<Partial<UserOperation>>;
 export declare function packUserOp(op: UserOperation, forSignature?: boolean): string;
 export declare function getUserOpHash(op: UserOperation, entryPoint: string, chainId: number): string;
 export declare function ecdsaSign(op: UserOperation, signer: ethers2.Wallet, entryPoint: string, chainId: number): string;
