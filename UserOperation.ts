@@ -5,7 +5,7 @@ import {
     bytes,
     uint256
 } from "./SolidityTypes";
-import Monad from './Monad';
+import Monad, { AsyncMonad } from './Monad';
 import {
     arrayify,
     defaultAbiCoder,
@@ -57,6 +57,21 @@ export function fillUserOpDefaults(op: Partial<UserOperation>): Monad<Partial<Us
     }
     const filled = { ...defaults, ...partial }
     return Monad.of<Partial<UserOperation>>(filled)
+}
+
+export function fillUserOpDefaultsAsync(op: Partial<UserOperation>): AsyncMonad<Partial<UserOperation>> {
+    const defaults = DefaultsForUserOp
+    const partial: any = { ...op }
+    // we want "item:undefined" to be used from defaults, and not override defaults, so we must explicitly
+    // remove those so "merge" will succeed.
+    for (const key in partial) {
+        if (partial[key] == null) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete partial[key]
+        }
+    }
+    const filled = { ...defaults, ...partial }
+    return AsyncMonad.of<Partial<UserOperation>>(filled)
 }
 
 export function packUserOp(op: UserOperation, forSignature = true): string {
@@ -124,7 +139,25 @@ const lamportSignUserOp = (op: UserOperation, signer: ethers2.Wallet, entryPoint
     } as UserOperation)
 }
 
+const lamportSignUserOpAsync = (op: UserOperation, signer: ethers2.Wallet, entryPoint: string, chainId: number, keys: KeyTrackerB): AsyncMonad<UserOperation> => {
+    const ecdsaSig = ecdsaSign(op, signer, entryPoint, chainId)
+
+    const message = getUserOpHash(op, entryPoint, chainId)
+    const message2 = ethers.utils.hashMessage(ethers.utils.arrayify(message))
+    const signingKeys = keys.getOne()
+    const signature = sign_hash(message2, signingKeys.pri)
+
+    const packedSignature = ethers.utils.defaultAbiCoder.encode(['bytes[256]', 'bytes32[2][256]', 'bytes'], [signature, signingKeys.pub, ecdsaSig])
+
+    return AsyncMonad.of({
+        ...op,
+        signature: packedSignature
+    } as UserOperation)
+}
+
+
 export {
     show,
     lamportSignUserOp,
+    lamportSignUserOpAsync,
 }

@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 import ENTRYPOINT from "./EntryPoint";
-import Monad from "./Monad";
-import { fillUserOpDefaults, lamportSignUserOp, show } from "./UserOperation";
+import Monad, { AsyncMonad } from "./Monad";
+import { UserOperation, fillUserOpDefaults, fillUserOpDefaultsAsync, lamportSignUserOp, lamportSignUserOpAsync, show } from "./UserOperation";
 import accountInterface from "./accountInterface";
 import getInitCode from "./getInitCode";
 import getNonce from "./getNonce";
-import { loadAccount } from "./loaders";
+import { loadAccount, loadProviders } from "./loaders";
 import submitUserOperationViaBundler from "./submitUserOperationViaBundler";
 import saveAccount from "./saveAccount";
 
@@ -24,22 +24,32 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
         '0x'
     ])
 
-    const userOp = Monad.of({
+    const estimateGas = async (op: Partial<UserOperation>): Promise<AsyncMonad<Partial<UserOperation>>> => {
+        const [normalProvider, bundlerProvider] = loadProviders(account.chainName)
+        const est = await bundlerProvider.send('eth_estimateUserOperationGas', [op, ENTRYPOINT])
+        console.log(`Estimate gas: `, est)
+        return AsyncMonad.of(op)
+    }
+    
+    const userOp = AsyncMonad.of({
         sender: account.counterfactual,
         initCode: initCode,
         callData: callData,
         nonce: await getNonce(account),
     })
-        .bind(fillUserOpDefaults)
-        .bind((uo: any) => lamportSignUserOp(
+        .bind(fillUserOpDefaultsAsync)
+        .bind((uo: any) => lamportSignUserOpAsync(
             uo,
             ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
             ENTRYPOINT,
             account.network,
             account.keys
         ))
+        .bind(estimateGas)  
+   
+    console.log(`User operation is: `, await userOp.unwrap())
 
-    await submitUserOperationViaBundler(userOp.unwrap(), account)
+    await submitUserOperationViaBundler(await userOp.unwrap(), account)
     saveAccount(account)
 }
 
