@@ -24,13 +24,14 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
         '0x'
     ])
 
-    const estimateGas = async (op: Partial<UserOperation>): Promise<AsyncMonad<Partial<UserOperation>>> => {
+    // const estimateGas = async (op: Partial<UserOperation>): Promise<AsyncMonad<Partial<UserOperation>>> => {
+    const estimateGas = async (op: Partial<UserOperation>): Promise<AsyncMonad<UserOperation>> => {
         const [normalProvider, bundlerProvider] = loadProviders(account.chainName)
         const est = await bundlerProvider.send('eth_estimateUserOperationGas', [op, ENTRYPOINT])
         console.log(`Estimate gas: `, est)
-        return AsyncMonad.of(op)
+        return AsyncMonad.of(op as UserOperation)
     }
-    
+
     const userOp = AsyncMonad.of({
         sender: account.counterfactual,
         initCode: initCode,
@@ -45,8 +46,15 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
             account.network,
             account.keys
         ))
-        .bind(estimateGas)  
-   
+        .bind(estimateGas)
+        .bind((uo: any) => lamportSignUserOpAsync(
+            uo,
+            ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
+            ENTRYPOINT,
+            account.network,
+            account.keys
+        ))
+
     console.log(`User operation is: `, await userOp.unwrap())
 
     await submitUserOperationViaBundler(await userOp.unwrap(), account)
