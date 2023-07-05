@@ -92,7 +92,7 @@ const finishInit = async (_accountName: string, depositAmount: string, extraActi
     })
         .bind(fillUserOpDefaultsAsync)
         .bind(estimateGasWithAccount)
-        .bind(gasMult(50))
+        .bind(gasMult(30))
         .bind(stub((op : UserOperation) => console.log("Estimated total gas is", BigNumber.from(op?.callGasLimit).add(op?.preVerificationGas).add(op?.verificationGasLimit).toString())))
         .bind((uo: any) => lamportSignUserOpAsync(
             uo,
