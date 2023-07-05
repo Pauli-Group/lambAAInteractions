@@ -10,19 +10,6 @@ import sendEth from './sendEth'
 import { promises as fs } from 'fs';
 import path from 'path';
 import submitCalldata from './submitCalldata'
-import { loadAccount } from './loaders'
-import accountInterface from './accountInterface'
-import Monad from './Monad'
-import getNonce from './getNonce'
-import { fillUserOpDefaults, lamportSignUserOp } from './UserOperation'
-import { BigNumber, ethers } from 'ethers'
-import ENTRYPOINT from './EntryPoint'
-import submitUserOperationViaBundler from './submitUserOperationViaBundler'
-import saveAccount from './saveAccount'
-import getInitCode from './getInitCode'
-import KeyTrackerB from 'lamportwalletmanager/src/KeyTrackerB'
-import { StandardMerkleTree } from '@openzeppelin/merkle-tree'
-import { address, bytes, uint256 } from './SolidityTypes'
 import finishInit from './finishInit'
 
 const program = new Command()

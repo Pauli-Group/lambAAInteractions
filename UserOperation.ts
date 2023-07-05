@@ -1,4 +1,4 @@
-import { ethers } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
 import { ethers as ethers2 } from 'ethers'
 import {
     address,
@@ -15,6 +15,9 @@ import {
 import { ecsign, toRpcSig, keccak256 as keccak256_buffer } from 'ethereumjs-util'
 import { sign_hash } from 'lamportwalletmanager/src';
 import KeyTrackerB from 'lamportwalletmanager/src/KeyTrackerB';
+import ENTRYPOINT from './EntryPoint';
+import { loadProviders } from './loaders';
+import { Account } from './Account';
 
 export interface UserOperation {
     sender: address
@@ -155,9 +158,48 @@ const lamportSignUserOpAsync = (op: UserOperation, signer: ethers2.Wallet, entry
     } as UserOperation)
 }
 
+const gasMult = (multiplier: number) => (op: Partial<UserOperation>) => AsyncMonad.of({
+    ...op,
+    callGasLimit: BigNumber.from(op.callGasLimit).mul(multiplier),
+    // verificationGasLimit: BigNumber.from(op.verificationGasLimit).mul(multiplier),
+    // preVerificationGas: BigNumber.from(op.preVerificationGas).mul(multiplier),
+} as UserOperation)
+
+const estimateGas = async (account: Account, op: Partial<UserOperation>): Promise<AsyncMonad<UserOperation>> => {
+    // create a mock signature for our estimate
+    const opWithFakeSignature = JSON.parse(JSON.stringify(op)) as UserOperation
+    const signer = ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath)
+    const ecdsaSig = ecdsaSign(op as UserOperation, signer, ENTRYPOINT, account.network)
+    const message = getUserOpHash(op as UserOperation, ENTRYPOINT, account.network)
+    const message2 = ethers.utils.hashMessage(ethers.utils.arrayify(message))
+    const notMyKeys = new KeyTrackerB() // can't use our real keys (OTS) because signed object will change after we have gas estimates
+    notMyKeys.more(1)
+    const signingKeys = notMyKeys.getOne()
+    const signature = sign_hash(message2, signingKeys.pri)
+    const packedSignature = ethers.utils.defaultAbiCoder.encode(['bytes[256]', 'bytes32[2][256]', 'bytes'], [signature, signingKeys.pub, ecdsaSig])
+    opWithFakeSignature.signature = packedSignature
+
+    const [normalProvider, bundlerProvider] = loadProviders(account.chainName)
+    const est = await bundlerProvider.send('eth_estimateUserOperationGas', [opWithFakeSignature, ENTRYPOINT])
+    console.log(`Estimate gas: `, est)
+
+    op.callGasLimit = est.callGasLimit
+    op.preVerificationGas = est.preVerificationGas
+    op.verificationGasLimit = est.verificationGas
+
+    return AsyncMonad.of(op as UserOperation)
+}
+
+    const stub = (msgDisplay : (op : UserOperation) => void) => (op : UserOperation) => {
+        msgDisplay(op)
+        return AsyncMonad.of(op as UserOperation)
+    }
 
 export {
     show,
     lamportSignUserOp,
     lamportSignUserOpAsync,
+    estimateGas,
+    gasMult ,
+    stub,
 }

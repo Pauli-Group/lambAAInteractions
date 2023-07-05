@@ -4,11 +4,11 @@ import { StandardMerkleTree } from "@openzeppelin/merkle-tree"
 import { loadAccount } from "./loaders"
 import ENTRYPOINT from "./EntryPoint"
 import accountInterface from "./accountInterface"
-import Monad from "./Monad"
+import Monad, { AsyncMonad } from "./Monad"
 import getInitCode from "./getInitCode"
 import getNonce from "./getNonce"
 import { BigNumber, ethers } from "ethers"
-import { fillUserOpDefaults, lamportSignUserOp } from "./UserOperation"
+import { UserOperation, estimateGas, fillUserOpDefaults, fillUserOpDefaultsAsync, gasMult, lamportSignUserOp, lamportSignUserOpAsync, stub } from "./UserOperation"
 import submitUserOperationViaBundler from "./submitUserOperationViaBundler"
 import saveAccount from "./saveAccount"
 
@@ -19,10 +19,9 @@ type ExtraActivities = {
     estimatedAdditionalGas: uint256
 }
 
-
 const finishInit = async (_accountName: string, depositAmount: string, extraActivities: ExtraActivities | null = null) => {
     const oceKeyTracker = new KeyTrackerB()
-    const oceKeyCount = 256
+    const oceKeyCount = 128
     const oceKeys = oceKeyTracker.more(oceKeyCount)
 
     const ocePKHs = oceKeys
@@ -82,15 +81,20 @@ const finishInit = async (_accountName: string, depositAmount: string, extraActi
         func,
     ])
 
-    const userOp = Monad.of({
+    const estimateGasWithAccount = estimateGas.bind(null, account)
+
+    const userOp = AsyncMonad.of({
         sender: account.counterfactual,
         initCode: await getInitCode(account),
         callData: callData,
         nonce: await getNonce(account),
-        callGasLimit: BigNumber.from(10_000_000).add(extraActivities?.estimatedAdditionalGas ?? 0),
+        // callGasLimit: BigNumber.from(10_000_000).add(extraActivities?.estimatedAdditionalGas ?? 0),
     })
-        .bind(fillUserOpDefaults)
-        .bind((uo: any) => lamportSignUserOp(
+        .bind(fillUserOpDefaultsAsync)
+        .bind(estimateGasWithAccount)
+        .bind(gasMult(50))
+        .bind(stub((op : UserOperation) => console.log("Estimated total gas is", BigNumber.from(op?.callGasLimit).add(op?.preVerificationGas).add(op?.verificationGasLimit).toString())))
+        .bind((uo: any) => lamportSignUserOpAsync(
             uo,
             ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
             ENTRYPOINT,
@@ -98,7 +102,7 @@ const finishInit = async (_accountName: string, depositAmount: string, extraActi
             account.keys,
         ))
 
-    await submitUserOperationViaBundler(userOp.unwrap(), account)
+    await submitUserOperationViaBundler(await userOp.unwrap(), account)
     saveAccount(account)
 }
 

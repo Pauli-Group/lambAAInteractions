@@ -1,13 +1,15 @@
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import ENTRYPOINT from "./EntryPoint";
 import Monad, { AsyncMonad } from "./Monad";
-import { UserOperation, fillUserOpDefaults, fillUserOpDefaultsAsync, lamportSignUserOp, lamportSignUserOpAsync, show } from "./UserOperation";
+import { UserOperation, ecdsaSign, estimateGas, fillUserOpDefaults, fillUserOpDefaultsAsync, gasMult, getUserOpHash, lamportSignUserOp, lamportSignUserOpAsync, show, stub } from "./UserOperation";
 import accountInterface from "./accountInterface";
 import getInitCode from "./getInitCode";
 import getNonce from "./getNonce";
 import { loadAccount, loadProviders } from "./loaders";
 import submitUserOperationViaBundler from "./submitUserOperationViaBundler";
 import saveAccount from "./saveAccount";
+import KeyTrackerB from "lamportwalletmanager/src/KeyTrackerB";
+import { sign_hash } from "lamportwalletmanager/src";
 
 const sendEth = async (_accountName: string, toAddress: string, amount: string) => {
     const account = await loadAccount(_accountName.toLowerCase())
@@ -24,13 +26,7 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
         '0x'
     ])
 
-    // const estimateGas = async (op: Partial<UserOperation>): Promise<AsyncMonad<Partial<UserOperation>>> => {
-    const estimateGas = async (op: Partial<UserOperation>): Promise<AsyncMonad<UserOperation>> => {
-        const [normalProvider, bundlerProvider] = loadProviders(account.chainName)
-        const est = await bundlerProvider.send('eth_estimateUserOperationGas', [op, ENTRYPOINT])
-        console.log(`Estimate gas: `, est)
-        return AsyncMonad.of(op as UserOperation)
-    }
+    const estimateGasWithAccount = estimateGas.bind(null, account)
 
     const userOp = AsyncMonad.of({
         sender: account.counterfactual,
@@ -39,14 +35,9 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
         nonce: await getNonce(account),
     })
         .bind(fillUserOpDefaultsAsync)
-        .bind((uo: any) => lamportSignUserOpAsync(
-            uo,
-            ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
-            ENTRYPOINT,
-            account.network,
-            account.keys
-        ))
-        .bind(estimateGas)
+        .bind(estimateGasWithAccount)
+        .bind(gasMult(2))
+        .bind(stub((op : UserOperation) => console.log("Estimated total gas is", BigNumber.from(op?.callGasLimit).add(op?.preVerificationGas).add(op?.verificationGasLimit).toString())))
         .bind((uo: any) => lamportSignUserOpAsync(
             uo,
             ethers.Wallet.fromMnemonic(account.ecdsaSecret, account.ecdsaPath),
@@ -55,10 +46,11 @@ const sendEth = async (_accountName: string, toAddress: string, amount: string) 
             account.keys
         ))
 
-    console.log(`User operation is: `, await userOp.unwrap())
+    console.log(`User operation sig len is: `, (await userOp.unwrap()).signature.length)
 
     await submitUserOperationViaBundler(await userOp.unwrap(), account)
     saveAccount(account)
 }
 
 export default sendEth
+

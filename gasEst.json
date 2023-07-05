@@ -1,0 +1,27 @@
+{
+    "send eth": {
+        "preVerificationGas": "0x7e238",
+        "verificationGas": "0xc6779",
+        "callGasLimit": "0x9aab"
+    },
+    "send eth async" : {
+        "preVerificationGas": "",
+        "verificationGas": "",
+        "callGasLimit": ""
+    },
+    "send ERC20" : {
+        "preVerificationGas": "",
+        "verificationGas": "",
+        "callGasLimit": ""
+    },
+    "add keys" : {
+        "preVerificationGas": "",
+        "verificationGas": "",
+        "callGasLimit": ""
+    },
+    "initial multi-action" : {
+        "preVerificationGas": "",
+        "verificationGas": "",
+        "callGasLimit": ""
+    }
+}

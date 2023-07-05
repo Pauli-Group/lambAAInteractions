@@ -18,3 +18,6 @@ npx tsc ; node lib/Main.js execute will calldata/senddemo
 
 # deposit 0.1 eth for prefund
 npx tsc ; node lib/Main.js deposit will 100000000000000000
+
+# finish setup
+ npx tsc ; node lib/Main.js finish-init adam 100000000000000000
